@@ -1,4 +1,6 @@
 'pop' is a branch of 'pip' which ignores all constraints giving a *maximum* version number for a dependency.
+In a perfect world, this would be an *option* to pip, and it would print warnings when ignoring a max version.
+
 This is to patch the Python community's habit of needlessly specifying maximum versions, which makes it impossible to maintain a standard environment which includes any Python code, forcing users to build an over-complicated and ultimately unworkable hierarchy of virtual environments.
 
 The fix is simple:
@@ -7,5 +9,8 @@ pop/src/pip/_internal/operations/check.py contains thedefinition of the function
 check_package_set calls boolean req.specifier.contains(version, prereleases=True) to get a list of allowable version numbers.
 Class 'Specifier' is imported in src/pip/_internal/req/constructors.py:
 from pip._vendor.packaging.specifiers import Specifier
-So we'll go to _vendor.packaging.specifiers and add a method 'allows' to 'Specifier', to replace 'contains'.
-'allows'  converts "package_x==2.3.1" to "package_x>=2.3.1", and ignores "package_x<2".
+So we'll go to _vendor.packaging.specifiers (https://github.com/philgoetz/pop/blob/main/src/pip/_vendor/packaging/specifiers.py) and add a method 'allows' to 'Specifier', to replace 'contains'.
+'allows' converts "package_x==2.3.1" to "package_x>=2.3.1", and ignores "package_x<2".
+It is just a copy of 'contains', but altered in 1 of 2 places:
+  normalized_item = _coerce_version(item)                    # This pre-processes the string in 'item'.
+  return operator_callable(normalized_item, self.version)    # Later, this returns t if the dependency on normalized_item is satisfied.
