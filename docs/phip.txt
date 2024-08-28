@@ -1,16 +1,21 @@
-'pop' is a branch of 'pip' which ignores all constraints giving a *maximum* version number for a dependency.
-In a perfect world, this would be an *option* to pip, and it would print warnings when ignoring a max version.
+'phip' is a branch of 'pip' which ignores all constraints giving a *maximum* version number for a dependency.
+This is a  patch for the Python community's habit of needlessly specifying maximum versions, which makes it impossible to maintain a standard user environment which includes any Python code, forcing even ordinary, non-dev users to build an over-complicated and ultimately unworkable hierarchy of virtual environments.
 
-This is to patch the Python community's habit of needlessly specifying maximum versions, which makes it impossible to maintain a standard environment which includes any Python code, forcing users to build an over-complicated and ultimately unworkable hierarchy of virtual environments.
+To install, ZZZ.
+To use, install, and then alias 'pip' to 'phip'.
+In a perfect world, ignoring max version dependencies would be an *option* to pip.
+But this would require rewriting all code that calls pip to add the -nomax option.
+
+It would be nice if phip printed a warning when ignoring a max version, & I'd be grateful if anybody mods it to do that.
 
 The fix is simple:
 
-pop/src/pip/_internal/operations/check.py contains thedefinition of the function check_package_set, which constructs and returns the variable conflicting_deps.
-check_package_set calls boolean req.specifier.contains(version, prereleases=True) to get a list of allowable version numbers.
+src/pip/_internal/operations/check.py defines the Specifier method check_package_set(PackageSet), which returns a lists of missing dependencies, and conflicting_deps, a list of conflicting dependencies.  We'll mess with conflicting_deps.
+Specifier.check_package_set() calls boolean req.specifier.contains(version, prereleases=True) on every Specifier in every dependency.
+contains(version)  returns true if $version allows self.version.
 Class 'Specifier' is imported in src/pip/_internal/req/constructors.py:
 from pip._vendor.packaging.specifiers import Specifier
-So we'll go to _vendor.packaging.specifiers (https://github.com/philgoetz/pop/blob/main/src/pip/_vendor/packaging/specifiers.py) and add a method 'allows' to 'Specifier', to replace 'contains'.
-'allows' converts "package_x==2.3.1" to "package_x>=2.3.1", and ignores "package_x<2".
-It is just a copy of 'contains', but altered in 1 of 2 places:
+So we'll go to _vendor.packaging.specifiers (https://github.com/philgoetz/phip/blob/main/src/pip/_vendor/packaging/specifiers.py) and change method 'contains' to convert all eg "package_x==2.3.1" to "package_x>=2.3.1", and to ignore all eg "package_X<2".
+We'll alter 'contains' in 1 of 2 places:
   normalized_item = _coerce_version(item)                    # This pre-processes the string in 'item'.
-  return operator_callable(normalized_item, self.version)    # Later, this returns t if the dependency on normalized_item is satisfied.
+  return operator_callable(normalized_item, self.version)    # This returns t if the dependency on normalized_item is satisfied.
